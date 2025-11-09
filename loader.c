@@ -154,3 +154,67 @@ static void SIGSEV_handler(int sig, siginfo_t *si, void *ucontext) {
   }
   return;
 }
+
+void load_and_run_elf(char** exe){
+  fd = open(*exe, O_RDONLY);
+  check_fd(fd);
+
+  off_t size_fd = lseek(fd, 0, SEEK_END);
+  check_size(size_fd);
+
+  heap_memory = (char*)malloc(size_fd);
+  if (!heap_memory) {
+    printf("No memory allocated\n");
+    exit(1);
+  }
+
+  if (lseek(fd, 0, SEEK_SET) < 0) {
+    printf("Failed to reset ELF offset\n");
+    loader_cleanup();
+    exit(1);
+  }
+
+  ssize_t fd_read = read(fd, heap_memory, (size_t)size_fd);
+  check_fdread(fd_read, size_fd);
+
+  ehdr = (Elf32_Ehdr*)heap_memory;
+  check_elf_magic_bytes(ehdr);
+
+  phdr = (Elf32_Phdr*)(heap_memory + ehdr->e_phoff);
+
+  // page fault handler
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_flags = SA_SIGINFO;
+  sa.sa_sigaction = SIGSEV_handler;
+  sigemptyset(&sa.sa_mask);
+  if (sigaction(SIGSEGV, &sa, NULL) == -1) {
+    printf("Failed to register signal handler\n");
+    loader_cleanup();
+    exit(1);
+  }
+
+  void* entry_addr = (void*)ehdr->e_entry;
+  int result = ((int (*)())entry_addr)();
+
+  printf("User _start return value = %d\n", result);
+  loaderINFO();
+}
+
+int main(int argc, char** argv) {
+  if (argc != 2) {
+    printf("Usage: %s <ELF Executable>\n", argv[0]);
+    exit(1);
+  }
+
+  FILE *ELF_File = fopen(argv[1], "rb");
+  if (!ELF_File) {
+    printf("Unable to open ELF file\n");
+    exit(1);
+  }
+  fclose(ELF_File);
+
+  load_and_run_elf(&argv[1]);
+  loader_cleanup();
+  return 0;
+}
