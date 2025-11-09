@@ -57,11 +57,13 @@ This function calculates and prints the final statistics report after the progra
   o Formula: (Total Allocated) - (Total Bytes Copied) - (Total BSS Size)
 
 CONTRIBUTIONS:
-HANSIKA SINGH (2024225):
+
+Hansika Singh(2024225):
 • Error Checking Functions: check_fd(int fd),check_size(off_t size_fd), check_fdread(ssize_t fd_read, off_t size_fd), check_elf_magic_bytes(Elf32_Ehdr *ehdr), check_mmap(void* segment)
 • Page Fault handler : SIGSEV_handler(int sig, siginfo_t *si, void *ucontext)
 • static void loaderINFO()
-Anmol Saluja (2024087):
+
+Anmol Saluja(2024087):
 • Demand paging helper functions : findSegment(void* SIGSEV_addr), copyBytes(uint32_t segmentPage, uint32_t filesz)
 • Loader functions: loader_cleanup, load_and_run_elf(char** exe), main()
 • static long BssSize()
