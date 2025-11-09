@@ -52,3 +52,55 @@ void check_mmap(void *segment) {
       exit(1);
     }
 }
+
+// the function to find the address in which the address causing the segmentation fault lies
+static Elf32_Phdr* findSegment(void* SIGSEV_addr) {
+    int num_ph = ehdr->e_phnum;
+    for (int i = 0; i < num_ph; i++) {
+        if (phdr[i].p_type == PT_LOAD) {
+            if ((uint32_t)SIGSEV_addr >= phdr[i].p_vaddr && 
+                (uint32_t)SIGSEV_addr < (phdr[i].p_vaddr + phdr[i].p_memsz)) {
+                
+                return &phdr[i]; // Found the segment
+            }
+        }
+    }
+    return NULL; // Not in any segment
+}
+
+// the function to find actually how any bytes we have to copy from the elf file to the allocated page.
+static uint32_t copyBytes(uint32_t segmentPage, uint32_t segment_file_size) {
+    if (segmentPage >= segment_file_size) {
+        return 0;
+    }
+    if (segmentPage + PAGE_SIZE > segment_file_size) {
+        return segment_file_size - segmentPage;
+    }
+    return PAGE_SIZE;
+}
+
+// the function to calculate bss section size 
+static long BssSize() {
+    long total_bss_size = 0;
+    int num_ph = ehdr->e_phnum;
+
+    for (int i = 0; i < num_ph; i++) {
+        if (phdr[i].p_type == PT_LOAD) {
+            if (phdr[i].p_memsz > phdr[i].p_filesz) {
+                total_bss_size += (phdr[i].p_memsz - phdr[i].p_filesz);
+            }
+        }
+    }
+    return total_bss_size;
+}
+
+void loader_cleanup() {
+    if (fd>0) {
+        close(fd);
+    }
+    if(!heap_memory){
+        return;     // the function to close executable file and free heap memory.
+    }else{
+        free(heap_memory);
+    }
+}
