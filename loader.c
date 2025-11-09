@@ -104,3 +104,19 @@ void loader_cleanup() {
         free(heap_memory);
     }
 }
+
+// function to print all the information about SimpleSmartLoader and calculating fragmentation size 
+static void loaderINFO() {
+    long total_allocated_bytes = allocationCount * PAGE_SIZE;
+    // This is the TOTAL fragmentation, which INCLUDES BSS pages as "fragmented"
+    long totalFragmentation = total_allocated_bytes - bytes_copied; 
+    long total_bss_size = BssSize();
+    // This is the NET fragmentation, which EXCLUDES BSS pages
+    long netFragmentation = total_allocated_bytes - bytes_copied - total_bss_size; 
+
+    printf("SimpleSmartLoader Information: \n");
+    printf("Total Page Faults: %ld\n", faultCount);
+    printf("Total Page Allocations: %ld\n", allocationCount);
+    printf("Internal Fragmentation (Total): %.2f KB\n", (double)totalFragmentation / 1024.0);
+    printf("Internal Fragmentation (Net, excluding BSS): %.2f KB\n", (double)netFragmentation / 1024.0);
+}
