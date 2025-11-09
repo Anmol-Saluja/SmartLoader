@@ -120,3 +120,37 @@ static void loaderINFO() {
     printf("Internal Fragmentation (Total): %.2f KB\n", (double)totalFragmentation / 1024.0);
     printf("Internal Fragmentation (Net, excluding BSS): %.2f KB\n", (double)netFragmentation / 1024.0);
 }
+
+// User defined signal handler for implementing the assignment requirements for SIGSEV signal
+static void SIGSEV_handler(int sig, siginfo_t *si, void *ucontext) {
+    void* SIGSEV_addr = si->si_addr;
+    faultCount++;
+
+    Elf32_Phdr* toLoad_segment = findSegment(SIGSEV_addr);
+    if (!toLoad_segment) {
+        printf("Segmentation Fault: Invalid memory access at %p\n", SIGSEV_addr);
+        loader_cleanup();
+        exit(1);
+    }
+
+    //Calculate page start address (nearest multiple of 4096)
+    uintptr_t fault_num = (uintptr_t)SIGSEV_addr;
+    uintptr_t offset_in_page = fault_num % PAGE_SIZE;
+    uintptr_t page_start_num = fault_num - offset_in_page;
+    void* page_start = (void*)page_start_num;
+
+   void* new_page = mmap(page_start, PAGE_SIZE,PROT_READ | PROT_WRITE | PROT_EXEC,MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED,-1, 0);
+   check_mmap(new_page);
+   allocationCount++;
+
+  uint32_t segmentPage = (uint32_t)page_start - toLoad_segment->p_vaddr;
+  uint32_t file_offset = toLoad_segment->p_offset + segmentPage;
+  uint32_t bytes_to_copy = copyBytes(segmentPage, toLoad_segment->p_filesz);
+
+  if (bytes_to_copy > 0) {
+    void* data= heap_memory + file_offset;
+    memcpy(page_start, data, bytes_to_copy);
+    bytes_copied += bytes_to_copy;
+  }
+  return;
+}
